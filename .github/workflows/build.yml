@@ -1,21 +1,45 @@
-name: Proper Fix
-on: [push, workflow_dispatch]
+name: Deploy Ren'Py Game
+on:
+  push:
+    branches: [current-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. CORRECT CHECKOUT - Add fetch-depth and token
+      # 1. Checkout
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fixes shallow clone issues
-          token: ${{ secrets.GITHUB_TOKEN }}  # Explicit permissions
+          path: the-question-VN-test
+          fetch-depth: 0
 
-      # 2. VERIFY FILES EXIST
-      - name: Check Files
+      # 2. Install Ren'Py 
+      - name: Install Ren'Py
         run: |
-          echo "Repository contents:"
-          ls -R
-          [ -f game/script.rpy ] || { echo "ERROR: script.rpy missing"; exit 1; }
+          cd the-question-VN-test
+          wget https://www.renpy.org/dl/8.1.3/renpy-8.1.3-sdk.tar.bz2
+          tar -xf renpy-*.tar.bz2
+          chmod +x renpy-8.1.3-sdk/renpy.sh
 
-      # Rest of your workflow...
+      # 3. Build Web Version
+      - name: Build Game
+        run: |
+          cd the-question-VN-test
+          ./renpy-8.1.3-sdk/renpy.sh ./game/ export --web
+          echo "Built files:"
+          ls -la game/web/
+
+      # 4. Deploy
+      - name: Deploy to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: the-question-VN-test/game/web
+
+      - name: Deploy
+        uses: actions/deploy-pages@v3
