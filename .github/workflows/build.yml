@@ -1,52 +1,21 @@
-name: Absolute Deployment Guarantee
-on:
-  workflow_dispatch:
-  push:
-    branches: [current-release]
+name: Proper Fix
+on: [push, workflow_dispatch]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      # 1. Manual action download (bypass cache)
-      - name: Download upload-pages-artifact
-        run: |
-          mkdir -p .actions/upload-pages-artifact
-          curl -L https://github.com/actions/upload-pages-artifact/archive/refs/tags/v2.0.0.tar.gz | tar -xz -C .actions/upload-pages-artifact --strip-components=1
-
-      # 2. Create files with verification
-      - name: Generate Static Files
-        id: gen_files
-        run: |
-          mkdir -p public
-          echo "<!DOCTYPE html>
-          <html>
-          <head>
-            <title>Game Loader</title>
-            <meta http-equiv='refresh' content='5'>
-            <style>body{font-family:sans-serif;text-align:center;padding:2rem}</style>
-          </head>
-          <body>
-            <h1>🔄 Loading The Question VN</h1>
-            <p>Build in progress...</p>
-            <script>setTimeout(()=>location.reload(),5000)</script>
-          </body>
-          </html>" > public/index.html
-          
-          echo "Files generated:" && ls -la public/
-
-      # 3. Manual upload
-      - name: Upload Artifact
-        uses: ./.actions/upload-pages-artifact
+      # 1. CORRECT CHECKOUT - Add fetch-depth and token
+      - uses: actions/checkout@v4
         with:
-          path: public
-          retention-days: 1
+          fetch-depth: 0  # Fixes shallow clone issues
+          token: ${{ secrets.GITHUB_TOKEN }}  # Explicit permissions
 
-      # 4. Direct deployment
-      - name: Deploy to Pages
+      # 2. VERIFY FILES EXIST
+      - name: Check Files
         run: |
-          curl -X POST \
-          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          "https://api.github.com/repos/markhozias/the-question-VN-test/pages/builds" \
-          -d '{"artifact_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.gen_files.outputs.artifact_id }}"}'
+          echo "Repository contents:"
+          ls -R
+          [ -f game/script.rpy ] || { echo "ERROR: script.rpy missing"; exit 1; }
+
+      # Rest of your workflow...
