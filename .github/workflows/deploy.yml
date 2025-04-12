@@ -40,12 +40,12 @@ jobs:
           ./renpy-8.1.3-sdk/renpy.sh ./game/ export --web
           [ -f game/web/index.html ] || { echo "::error::Build failed - no index.html"; exit 1; }
 
-      # 4. Deploy (CRITICAL FIX: Correct action name)
-      - name: Upload to GitHub Pages
-        uses: actions/upload-pages-artifact@v2  # Correct Pages-specific action
+      # 4. Deploy (ONLY uses pages-specific actions)
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v2
         with:
           path: the-question-VN-test/game/web
 
-      - name: Deploy
+      - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v3
