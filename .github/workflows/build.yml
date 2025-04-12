@@ -1,38 +1,59 @@
-name: Ensure Live Site
+name: Guaranteed Placeholder
 on:
+  workflow_dispatch:  # Allows manual triggering
   push:
     branches: [current-release]
 
 jobs:
-  placeholder:
+  deploy_placeholder:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout without LFS
-        uses: actions/checkout@v4
-        with:
-          lfs: false  # Disable Git LFS if not needed
-          path: the-question-VN-test  # Explicit path
-
-      - name: Create Minimum Site
+      # 1. Safe repository checkout (no Git operations)
+      - name: Create Directories
         run: |
           mkdir -p the-question-VN-test/game/web
-          cat <<EOF > the-question-VN-test/game/web/index.html
+          cd the-question-VN-test/game/web
+          
+      # 2. Generate HTML without Git dependencies
+      - name: Create Placeholder
+        run: |
+          cat > the-question-VN-test/game/web/index.html <<'EOF'
           <!DOCTYPE html>
           <html>
-            <head>
-              <title>Game Loading</title>
-              <meta http-equiv="refresh" content="5">
-            </head>
-            <body>
-              <h1>🛠️ Game is building...</h1>
-              <p>Auto-refreshing in 5 seconds</p>
-            </body>
+          <head>
+            <title>Game Loading</title>
+            <style>
+              body { font-family: sans-serif; text-align: center; padding: 2rem; }
+              .loader { 
+                border: 5px solid #f3f3f3;
+                border-top: 5px solid #3498db;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 2s linear infinite;
+                margin: 20px auto;
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="loader"></div>
+            <h1>Building The Question VN</h1>
+            <p>This page will automatically update when ready</p>
+            <script>
+              setTimeout(() => location.reload(), 5000);
+            </script>
+          </body>
           </html>
           EOF
 
-      - name: Deploy Placeholder
-        uses: peaceiris/actions-gh-pages@v3
+      # 3. Direct deployment without Git history
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: the-question-VN-test/game/web
-          keep_files: false
+          branch: gh-pages  # Creates if doesn't exist
+          folder: the-question-VN-test/game/web
+          clean: true
