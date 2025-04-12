@@ -3,7 +3,7 @@ on:
   push:
     branches: [current-release]
   workflow_dispatch:
-    branches: [current-release]  # Explicit manual trigger enable
+    branches: [current-release]
 
 permissions:
   contents: write
@@ -18,11 +18,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # 1. Checkout (corrected)
+      # 1. Checkout
       - uses: actions/checkout@v4
         with:
           path: the-question-VN-test
-          ref: current-release  # Explicit branch reference
+          ref: current-release
+          fetch-depth: 0
 
       # 2. Install Ren'Py
       - name: Setup Ren'Py
@@ -32,19 +33,19 @@ jobs:
           tar -xf renpy-*.tar.bz2
           chmod +x renpy-8.1.3-sdk/renpy.sh
 
-      # 3. Build (verified)
+      # 3. Build
       - name: Build Web Export
         run: |
           cd the-question-VN-test
           ./renpy-8.1.3-sdk/renpy.sh ./game/ export --web
-          [ -f game/web/index.html ] || { echo "::error::Build failed"; exit 1; }
+          [ -f game/web/index.html ] || { echo "::error::Build failed - no index.html"; exit 1; }
 
-      # 4. Deploy (critical fix: correct action name)
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v2  # NOT upload-artifact@v3
+      # 4. Deploy (CRITICAL FIX: Correct action name)
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2  # Correct Pages-specific action
         with:
           path: the-question-VN-test/game/web
 
-      - name: Deploy to Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v3
