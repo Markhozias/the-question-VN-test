@@ -1,25 +1,40 @@
-name: Build and Deploy
+name: Deploy Ren'Py Game
 on:
   push:
-    branches: [working-on]  # Trigger when pushing to dev branch
+    branches: [current-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
-      # Build Ren'Py (same as before)
+    steps:
+      # 1. Proper checkout
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Build Ren'Py
       - name: Build Web Version
         run: |
           wget https://www.renpy.org/dl/8.1.3/renpy-8.1.3-sdk.tar.bz2
           tar -xf renpy-*.tar.bz2
           ./renpy-8.1.3-sdk/renpy.sh ./game/ export --web
 
-      # New: Deploy via Actions (not branch)
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      # 3. Deploy
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./game/web
-          # No need for destination_dir - deploys directly
+          path: game/web
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v3
