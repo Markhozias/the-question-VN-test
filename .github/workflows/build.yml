@@ -7,21 +7,32 @@ jobs:
   placeholder:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout without LFS
+        uses: actions/checkout@v4
+        with:
+          lfs: false  # Disable Git LFS if not needed
+          path: the-question-VN-test  # Explicit path
+
       - name: Create Minimum Site
         run: |
           mkdir -p the-question-VN-test/game/web
-          echo "<!DOCTYPE html>
+          cat <<EOF > the-question-VN-test/game/web/index.html
+          <!DOCTYPE html>
           <html>
+            <head>
+              <title>Game Loading</title>
+              <meta http-equiv="refresh" content="5">
+            </head>
             <body>
-              <h1>Game is building...</h1>
-              <p>Next refresh will show the game</p>
+              <h1>🛠️ Game is building...</h1>
+              <p>Auto-refreshing in 5 seconds</p>
             </body>
-          </html>" > the-question-VN-test/game/web/index.html
+          </html>
+          EOF
 
       - name: Deploy Placeholder
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./the-question-VN-test/game/web
+          publish_dir: the-question-VN-test/game/web
+          keep_files: false
