@@ -1,73 +1,52 @@
-name: Guaranteed Deployment
+name: Absolute Deployment Guarantee
 on:
-  workflow_dispatch:  # Allows manual runs
+  workflow_dispatch:
   push:
     branches: [current-release]
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
     steps:
-      # 1. Create files directly (no Git)
-      - name: Create Minimal Site
+      # 1. Manual action download (bypass cache)
+      - name: Download upload-pages-artifact
+        run: |
+          mkdir -p .actions/upload-pages-artifact
+          curl -L https://github.com/actions/upload-pages-artifact/archive/refs/tags/v2.0.0.tar.gz | tar -xz -C .actions/upload-pages-artifact --strip-components=1
+
+      # 2. Create files with verification
+      - name: Generate Static Files
+        id: gen_files
         run: |
           mkdir -p public
-          cat <<'EOF' > public/index.html
-          <!DOCTYPE html>
+          echo "<!DOCTYPE html>
           <html>
           <head>
-            <title>The Question VN</title>
-            <meta name="viewport" content="width=device-width">
-            <style>
-              body { 
-                font-family: system-ui, sans-serif;
-                background: #f8f9fa;
-                text-align: center;
-                padding: 2rem;
-                line-height: 1.6;
-              }
-              .spinner {
-                margin: 2rem auto;
-                width: 3rem;
-                height: 3rem;
-                border: 0.3rem solid rgba(0,0,0,0.1);
-                border-top-color: #2188ff;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-              }
-              @keyframes spin { to { transform: rotate(360deg); } }
-            </style>
+            <title>Game Loader</title>
+            <meta http-equiv='refresh' content='5'>
+            <style>body{font-family:sans-serif;text-align:center;padding:2rem}</style>
           </head>
           <body>
-            <div class="spinner"></div>
-            <h1>Loading The Question</h1>
-            <p>Game assets are being compiled...</p>
-            <noscript>
-              <p>Enable JavaScript for automatic reloading.</p>
-            </noscript>
-            <script>
-              setTimeout(() => location.reload(), 5000);
-            </script>
+            <h1>🔄 Loading The Question VN</h1>
+            <p>Build in progress...</p>
+            <script>setTimeout(()=>location.reload(),5000)</script>
           </body>
-          </html>
-          EOF
+          </html>" > public/index.html
+          
+          echo "Files generated:" && ls -la public/
 
-      # 2. Upload via GitHub's official action
+      # 3. Manual upload
       - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: ./.actions/upload-pages-artifact
         with:
           path: public
+          retention-days: 1
 
-      # 3. Deploy
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v3
+      # 4. Direct deployment
+      - name: Deploy to Pages
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/markhozias/the-question-VN-test/pages/builds" \
+          -d '{"artifact_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.gen_files.outputs.artifact_id }}"}'
