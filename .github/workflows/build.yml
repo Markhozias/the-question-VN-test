@@ -1,48 +1,73 @@
 name: Guaranteed Deployment
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual runs
   push:
     branches: [current-release]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
-      # 1. Create files directly (no checkout)
-      - name: Generate Static Files
+      # 1. Create files directly (no Git)
+      - name: Create Minimal Site
         run: |
-          mkdir -p ~/game-build
-          cat <<'EOF' > ~/game-build/index.html
+          mkdir -p public
+          cat <<'EOF' > public/index.html
           <!DOCTYPE html>
           <html>
           <head>
             <title>The Question VN</title>
-            <script>
-              let retries = 0;
-              function checkGame() {
-                fetch('game.html')
-                  .then(r => r.status === 200 ? location.assign('game.html') : retry())
-                  .catch(retry);
+            <meta name="viewport" content="width=device-width">
+            <style>
+              body { 
+                font-family: system-ui, sans-serif;
+                background: #f8f9fa;
+                text-align: center;
+                padding: 2rem;
+                line-height: 1.6;
               }
-              function retry() {
-                if (retries++ < 10) setTimeout(checkGame, 3000);
+              .spinner {
+                margin: 2rem auto;
+                width: 3rem;
+                height: 3rem;
+                border: 0.3rem solid rgba(0,0,0,0.1);
+                border-top-color: #2188ff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
               }
-              checkGame();
-            </script>
+              @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
           </head>
           <body>
-            <h1>🔄 Loading Game Assets...</h1>
-            <p>This may take a few minutes on first load</p>
+            <div class="spinner"></div>
+            <h1>Loading The Question</h1>
+            <p>Game assets are being compiled...</p>
+            <noscript>
+              <p>Enable JavaScript for automatic reloading.</p>
+            </noscript>
+            <script>
+              setTimeout(() => location.reload(), 5000);
+            </script>
           </body>
           </html>
           EOF
 
-      # 2. Direct upload via GitHub API
-      - name: Deploy via HTTP
-        uses: skx/github-action-publish-dir@v2
+      # 2. Upload via GitHub's official action
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          dir: ~/game-build
-          branch: gh-pages
-          verbose: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: public
+
+      # 3. Deploy
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v3
